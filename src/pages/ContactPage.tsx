@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
 import { sendContactMessage } from '../api/contactApi';
+import { extractError } from '../utils/extractError';
 
 export default function ContactPage() {
   const [form, setForm] = useState({
@@ -14,7 +14,7 @@ export default function ContactPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!form.fullName.trim() || !form.email.trim() || !form.message.trim()) {
       setError('Please fill in your name, email, and message.');
@@ -32,8 +32,8 @@ export default function ContactPage() {
       });
       setSuccess(true);
       setForm({ fullName: '', email: '', phone: '', subject: '', message: '' });
-    } catch {
-      setError('Failed to send your message. Please try again or contact us directly.');
+    } catch (err) {
+      setError(extractError(err));
     } finally {
       setSubmitting(false);
     }
@@ -57,10 +57,7 @@ export default function ContactPage() {
               <div className="success-icon">✓</div>
               <h2>Message sent!</h2>
               <p>Thank you for reaching out. We'll be in touch with you shortly.</p>
-              <button
-                className="btn-outline"
-                onClick={() => setSuccess(false)}
-              >
+              <button className="btn-outline" onClick={() => setSuccess(false)}>
                 Send another message
               </button>
             </div>

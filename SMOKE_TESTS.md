@@ -178,10 +178,108 @@ Manual smoke test checklist. Run after each release with the backend at `http://
 
 ### Known limitations (v4.3)
 
-- Booking form is a placeholder — no appointment creation yet
+- Booking form is now live (v4.4) — see v4.4 section below
 - Blog post detail page (`/blog/:slug`) re-renders the same BlogPage (full detail page is future work)
 - No pagination on any list
 - No search on any page
 - No SEO meta tags
 - `settingsApi.ts` is defined but not yet used in the site (business settings are not fetched)
 - Gallery category filter is client-side only (no backend filter param)
+
+---
+
+## v4.4 — Booking Form & Contact Fix
+
+### Contact page endpoint fix
+
+- [ ] Navigate to `/contact`, fill in Full Name, Email, and Message, click "Send Message"
+- [ ] In DevTools Network tab: the request goes to `POST /api/contact-messages` (not `/api/contact`)
+- [ ] On success: green "Message sent!" screen appears; form fields are cleared
+- [ ] If backend returns a validation error (e.g., invalid email format): the exact backend error message is shown in the red error banner (not a generic fallback)
+- [ ] "Send another message" button resets back to the empty form
+- [ ] No `Authorization` header is present on the contact request
+
+### Booking page — service loading
+
+- [ ] Navigate to `/booking` — brief "Loading services…" text is shown while services fetch
+- [ ] With backend running and active services: the booking form appears with a service select dropdown
+- [ ] With backend down: "Unable to load services…" error message shown with a "Contact us to book" link — no form is shown
+- [ ] With backend running but no active services: "No services are currently available for online booking." message shown with a "Contact us to book" link — no form is shown
+
+### Booking form — fields and layout
+
+- [ ] Form is displayed inside a white card with a subtle border and shadow
+- [ ] Service select shows a placeholder option "— Select a service —" by default
+- [ ] Each option in the service select shows: `{title} — {X} min — ${Y.YY}`
+- [ ] After selecting a service, a hint line appears below the select showing duration and price
+- [ ] Date input enforces a minimum of today — past dates cannot be selected
+- [ ] Time input is an HTML time picker (HH:mm)
+- [ ] Contact details section has a subtle divider labelled "Your contact details"
+- [ ] Full Name and Email are in a two-column row on desktop; stack on mobile
+- [ ] Phone is a full-width field
+- [ ] Notes / Additional Notes is an optional textarea (no asterisk)
+- [ ] Required fields are marked with `*`
+- [ ] Submit button text is "Request Appointment"
+- [ ] A disclaimer below the button explains that the team will confirm by phone or email
+
+### Booking form — client-side validation
+
+All validations fire on submit; no API call is made if any fails.
+
+- [ ] Submit with no service selected → "Please select a service."
+- [ ] Submit with service but no date → "Please choose a preferred date."
+- [ ] Submit with service + date but no time → "Please choose a preferred time."
+- [ ] Submit with all date/time/service filled but no Full Name → "Please enter your full name."
+- [ ] Submit with Full Name but no Email → "Please enter your email address."
+- [ ] Submit with invalid email (e.g. `notanemail`) → "Please enter a valid email address."
+- [ ] Submit with valid email but no Phone → "Please enter your phone number."
+- [ ] Validation error appears in a red banner above the form; form fields retain their values
+- [ ] Fixing the invalid field and resubmitting clears the error and proceeds to API call
+
+### Booking form — successful submission
+
+- [ ] Fill all required fields with valid data; click "Request Appointment"
+- [ ] Button shows "Sending request…" while in flight; all form fields become unresponsive
+- [ ] On success: the form is replaced by a green success message
+  - [ ] "Booking request received!" heading is shown
+  - [ ] Customer's full name appears in the confirmation text
+  - [ ] Service title appears in the confirmation text
+  - [ ] Requested date and time appear in the confirmation text
+  - [ ] Reference number (appointment ID) is shown
+- [ ] "Book another appointment" button resets to the empty form
+- [ ] "Go to home" link navigates to `/`
+
+### Booking form — backend error
+
+- [ ] With backend running, submit with a date in the past (bypass the HTML `min` with DevTools if needed) — backend returns 400; error message from the backend is shown in a red banner above the form; form fields are preserved
+
+### DevTools checks (Network tab)
+
+- [ ] `POST /api/appointments` is called on booking submit
+- [ ] Request body contains exactly:
+  - `customerFullName` (string)
+  - `customerEmail` (string or `null` if left blank — email is required by validation so always a string here)
+  - `customerPhone` (string)
+  - `staffMemberId`: `null`
+  - `businessServiceId` (number, not a string)
+  - `requestedDate` (string, format `YYYY-MM-DD`)
+  - `requestedTime` (string, format `HH:mm`)
+  - `note` (string or `null`)
+- [ ] No `Authorization` header is present on the booking request
+- [ ] Response is 201 with the created appointment object (id, customerFullName, businessServiceTitle, requestedDate, requestedTime, status)
+
+### Regression checks
+
+- [ ] All v4.3 routes still load: `/`, `/services`, `/gallery`, `/blog`, `/contact`
+- [ ] Header and Footer are unchanged on all pages
+- [ ] Home page still loads services and gallery previews from the backend
+- [ ] Services page still loads and shows the "Book" button on each service
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+
+### Known limitations (v4.4)
+
+- No real-time availability checking — any date and time can be submitted
+- `staffMemberId` is always sent as `null` (staff selection is not exposed to customers yet)
+- No payment step — booking creates a Pending appointment only
+- No email confirmation sent to customer (backend email integration is separate)
+- Blog post detail page (`/blog/:slug`) still reuses the list page (no detail view yet)

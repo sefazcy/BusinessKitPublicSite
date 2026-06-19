@@ -9,4 +9,4 @@ export interface ContactRequest {
 }
 
 export const sendContactMessage = (data: ContactRequest) =>
-  apiClient.post<void>('/api/contact', data);
+  apiClient.post<void>('/api/contact-messages', data);
