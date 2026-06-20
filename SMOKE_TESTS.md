@@ -428,3 +428,50 @@ Using admin panel or backend Swagger to force a specific status:
 - No automatic polling on the Payment Status page — customer must click "Refresh status" manually
 - `checkoutUrl` from the backend points to `http://localhost:5174/payment-status/{paymentId}` (placeholder URL from manual provider); in a real provider integration this will be a hosted checkout URL
 - If backend returns currency other than TRY (from BusinessSettings), the amount is displayed with that currency code — no locale formatting
+
+---
+
+## v4.8 — Payment dev-safety (hide simulate UI outside local dev)
+
+### Condition used to show/hide dev tools
+
+The Developer Tools panel renders only when **both** conditions are true:
+- `payment.status === 'Pending'`
+- `import.meta.env.DEV === true`
+
+`import.meta.env.DEV` is a Vite compile-time constant: `true` during `vite dev`, replaced with `false` (and dead-code-eliminated) in `vite build` output.
+
+---
+
+### Development mode (`npm run dev`)
+
+- [ ] Navigate to `/payment-status/{id}` where the payment is Pending
+- [ ] **Developer tools panel is visible** — amber dashed border, "Developer tools" label
+- [ ] "Simulate successful payment" button is visible and clickable
+- [ ] Clicking it calls `PATCH /api/payments/{id}/simulate-paid` (no token)
+- [ ] On success: page updates in-place to Paid state; dev panel disappears
+- [ ] Developer tools panel is **not** shown when status is Paid, Failed, or Refunded
+
+---
+
+### Production build (`npm run build` + `vite preview` or static host)
+
+- [ ] Navigate to `/payment-status/{id}` where payment is Pending
+- [ ] **No "Developer tools" heading visible**
+- [ ] **No "Simulate successful payment" button visible**
+- [ ] **No mention of `simulate-paid` or backend endpoint paths**
+- [ ] "Awaiting payment" badge still shows
+- [ ] "Refresh status" button still works — re-fetches status from backend
+- [ ] "Book another" and "Home" links still work
+
+---
+
+### Unchanged behaviour (regression checks)
+
+- [ ] Booking form submits → `POST /api/appointments` → checkout auto-starts → payment info card appears
+- [ ] "View payment status →" link navigates to `/payment-status/{id}`
+- [ ] `GET /api/payments/{id}/status` is called on page load (DevTools — no `Authorization` header)
+- [ ] Paid status displays "Payment completed" badge with `paidAt` timestamp
+- [ ] Failed status displays "Payment failed" badge
+- [ ] Refunded status displays "Payment refunded" badge
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings

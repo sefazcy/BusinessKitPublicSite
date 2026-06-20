@@ -172,7 +172,7 @@ export default function PaymentStatusPage() {
                 <Link to="/" className="btn-outline">Home</Link>
               </div>
 
-              {status.status === 'Pending' && (
+              {status.status === 'Pending' && import.meta.env.DEV && (
                 <div className="ps-dev-panel">
                   <p className="ps-dev-label">Developer tools</p>
                   <p className="ps-dev-description">
