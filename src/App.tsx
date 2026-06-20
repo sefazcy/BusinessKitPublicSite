@@ -6,6 +6,7 @@ import BookingPage from './pages/BookingPage';
 import GalleryPage from './pages/GalleryPage';
 import BlogPage from './pages/BlogPage';
 import ContactPage from './pages/ContactPage';
+import PaymentStatusPage from './pages/PaymentStatusPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="blog" element={<BlogPage />} />
           <Route path="blog/:slug" element={<BlogPage />} />
           <Route path="contact" element={<ContactPage />} />
+          <Route path="payment-status/:paymentId" element={<PaymentStatusPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

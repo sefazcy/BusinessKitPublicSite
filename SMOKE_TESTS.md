@@ -280,6 +280,151 @@ All validations fire on submit; no API call is made if any fails.
 
 - No real-time availability checking — any date and time can be submitted
 - `staffMemberId` is always sent as `null` (staff selection is not exposed to customers yet)
-- No payment step — booking creates a Pending appointment only
+- Payment checkout is now automatic after booking (v4.6) — see v4.6 section below
 - No email confirmation sent to customer (backend email integration is separate)
 - Blog post detail page (`/blog/:slug`) still reuses the list page (no detail view yet)
+
+---
+
+## v4.6 — Payment Flow (Booking → Checkout → Status Page)
+
+### Build
+
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+- [ ] `dist/` folder is generated successfully
+
+---
+
+### Booking page — automatic checkout after booking
+
+- [ ] Navigate to `/booking`, fill in all required fields, click "Request Appointment"
+- [ ] On success: "Booking request received!" green card is shown as before
+- [ ] A spinner with "Setting up payment session…" text appears below the booking confirmation while checkout is loading
+- [ ] Once checkout resolves, the spinner is replaced by a **payment info card** that shows:
+  - Amount (e.g., `150.00 TRY`)
+  - A status badge: `Pending` (amber/yellow background)
+  - A "View payment status →" link
+- [ ] "View payment status →" link navigates to `/payment-status/{paymentId}`
+- [ ] "Book another appointment" and "Go to home" buttons are still visible below the payment card
+- [ ] Clicking "Book another appointment" resets everything — the form reappears and checkout state is cleared
+
+---
+
+### Booking → checkout API calls (DevTools Network tab)
+
+- [ ] `POST /api/appointments` is called first and returns 201
+- [ ] Immediately after, `POST /api/payments/checkout` is called with body `{ "appointmentId": <id> }`
+- [ ] Both requests go to `http://localhost:5299`
+- [ ] **No `Authorization` header** is present on either request
+- [ ] No card data is collected or sent at any point
+- [ ] `POST /api/payments/checkout` returns `{ paymentId, appointmentId, amount, currency, status, provider, checkoutUrl, message }`
+
+---
+
+### Booking page — checkout failure handling
+
+- [ ] Simulate checkout failure (stop backend between booking submit and checkout call, or return 404 for the appointment)
+- [ ] The booking success card ("Booking request received!") remains fully visible
+- [ ] The payment info card is replaced by an **amber warning box** with:
+  - "Payment setup could not be started automatically."
+  - A message explaining the booking is still confirmed and to contact them for payment
+- [ ] "Book another appointment" and "Go to home" buttons are still functional
+- [ ] No white screen or app crash occurs
+
+---
+
+### Route: /payment-status/:paymentId
+
+- [ ] Navigating to `/payment-status/3` (replace `3` with a real payment ID) loads the **Payment Status page**
+- [ ] Page hero shows "Payment Status" heading
+- [ ] "Loading payment status…" is shown while the API call is in flight
+- [ ] On success: a card appears with the payment badge and payment ID
+
+**Invalid ID:**
+
+- [ ] `/payment-status/abc` → "Invalid payment ID." error message shown with "Back to booking" and "Home" links
+- [ ] `/payment-status/99999` (non-existent) → "Payment with id 99999 was not found." error message shown
+- [ ] "Try again" button on the error state re-fetches the status
+
+---
+
+### Payment Status Page — Pending state
+
+- [ ] Badge shows "Awaiting payment" with **amber/yellow** background
+- [ ] Payment ID is shown (e.g., "Payment #3")
+- [ ] A description paragraph explains payment is pending
+- [ ] **"Refresh status"** button is visible (indigo/primary style)
+- [ ] Clicking "Refresh status": button briefly shows "Refreshing…" and is disabled; on completion, the status updates if it changed
+- [ ] "Book another" and "Home" links are visible
+
+**Developer tools panel (dev/test only):**
+
+- [ ] An amber dashed-border panel labelled "Developer tools" is visible when status is Pending
+- [ ] The panel description mentions the backend `simulate-paid` endpoint
+- [ ] "Simulate successful payment" button is visible (amber background, distinct from primary actions)
+- [ ] No `Authorization` header is sent when clicking "Simulate successful payment"
+
+---
+
+### Payment Status Page — simulating payment success
+
+- [ ] Click "Simulate successful payment" in the dev panel
+- [ ] Button shows "Simulating…" and is disabled while in flight
+- [ ] On success: the page **updates to Paid state** without a full page reload
+  - Badge changes to "Payment completed" with **green** background
+  - "Paid at" row appears with the timestamp
+  - The dev panel **disappears** (only shown for Pending)
+  - "Refresh status" button disappears
+  - "Book another" and "Home" links remain
+
+---
+
+### Payment Status Page — Paid state
+
+- [ ] Badge shows "Payment completed" with **green** background
+- [ ] "Paid at" label and timestamp are shown
+- [ ] "Your payment has been received. Thank you!" description is shown
+- [ ] No "Refresh status" button
+- [ ] No dev panel
+- [ ] "Book another" and "Home" links are shown
+
+---
+
+### Payment Status Page — other statuses (manual backend test)
+
+Using admin panel or backend Swagger to force a specific status:
+
+- [ ] **Failed**: badge shows "Payment failed" with **red** background; description mentions contacting for help
+- [ ] **Refunded**: badge shows "Payment refunded" with **purple** background; description mentions processing time
+
+---
+
+### DevTools checks
+
+- [ ] `GET /api/payments/{id}/status` is called on PaymentStatusPage load (no token)
+- [ ] `PATCH /api/payments/{id}/simulate-paid` is called when "Simulate successful payment" is clicked (no token)
+- [ ] After simulate, `GET /api/payments/{id}/status` is called again to refresh the displayed status
+- [ ] `GET /api/payments/{id}/status` is called again when "Refresh status" is clicked
+- [ ] No `Authorization` header is present on any payment status page request
+- [ ] Response from status endpoint contains exactly: `id`, `status`, `paidAt` — no other fields
+
+---
+
+### Regression checks
+
+- [ ] All v4.3 and v4.4 routes still load: `/`, `/services`, `/gallery`, `/blog`, `/contact`
+- [ ] Booking form still works end-to-end (v4.4 flow unchanged up to the checkout addition)
+- [ ] Contact form still submits to `/api/contact-messages`
+- [ ] Header and Footer appear on the Payment Status page
+- [ ] Navigating to an unknown URL still shows the NotFoundPage
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+
+---
+
+### Known limitations (v4.6)
+
+- Payment Status page is not linked from header nav (it is a contextual page, navigated via the booking flow)
+- "Simulate successful payment" dev button is publicly accessible — not gated behind authentication or environment check (intentional for this sprint; future hardening will gate it)
+- No automatic polling on the Payment Status page — customer must click "Refresh status" manually
+- `checkoutUrl` from the backend points to `http://localhost:5174/payment-status/{paymentId}` (placeholder URL from manual provider); in a real provider integration this will be a hosted checkout URL
+- If backend returns currency other than TRY (from BusinessSettings), the amount is displayed with that currency code — no locale formatting

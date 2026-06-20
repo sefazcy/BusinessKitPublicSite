@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Service } from '../types/service';
 import type { BookingConfirmation } from '../types/appointment';
+import type { PaymentCheckoutResponse } from '../types/payment';
 import { getPublicServices } from '../api/servicesApi';
 import { createBooking } from '../api/bookingApi';
+import { createCheckout } from '../api/paymentApi';
 import { extractError } from '../utils/extractError';
 
 const today = new Date().toISOString().split('T')[0];
@@ -32,6 +34,10 @@ export default function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
+
+  const [checkout, setCheckout] = useState<PaymentCheckoutResponse | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   useEffect(() => {
     getPublicServices()
@@ -63,6 +69,7 @@ export default function BookingPage() {
     setValidationError('');
     setSubmitting(true);
 
+    let bookedId: number | null = null;
     try {
       const { data } = await createBooking({
         customerFullName: form.customerFullName.trim(),
@@ -76,10 +83,24 @@ export default function BookingPage() {
       });
       setConfirmation(data);
       setForm(EMPTY_FORM);
+      bookedId = data.id;
     } catch (err) {
       setSubmitError(extractError(err));
     } finally {
       setSubmitting(false);
+    }
+
+    if (bookedId === null) return;
+
+    // Booking succeeded — start checkout session automatically
+    setCheckoutLoading(true);
+    try {
+      const { data: checkoutData } = await createCheckout(bookedId);
+      setCheckout(checkoutData);
+    } catch (err) {
+      setCheckoutError(extractError(err));
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -88,6 +109,9 @@ export default function BookingPage() {
     setForm(EMPTY_FORM);
     setValidationError('');
     setSubmitError('');
+    setCheckout(null);
+    setCheckoutError('');
+    setCheckoutLoading(false);
   };
 
   const selectedService = services.find(s => String(s.id) === form.businessServiceId);
@@ -124,6 +148,45 @@ export default function BookingPage() {
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                 Reference #{confirmation.id}
               </p>
+
+              {/* Payment section */}
+              {checkoutLoading && (
+                <div className="checkout-info-card checkout-info-loading">
+                  <span className="checkout-spinner" />
+                  Setting up payment session…
+                </div>
+              )}
+
+              {!checkoutLoading && checkout && (
+                <div className="checkout-info-card">
+                  <p className="checkout-info-label">Payment</p>
+                  <div className="checkout-info-row">
+                    <span className="checkout-info-amount">
+                      {Number(checkout.amount).toFixed(2)} {checkout.currency}
+                    </span>
+                    <span className={`checkout-status-badge checkout-status-${checkout.status.toLowerCase()}`}>
+                      {checkout.status}
+                    </span>
+                  </div>
+                  <Link
+                    to={`/payment-status/${checkout.paymentId}`}
+                    className="checkout-info-link"
+                  >
+                    View payment status →
+                  </Link>
+                </div>
+              )}
+
+              {!checkoutLoading && checkoutError && (
+                <div className="checkout-warning">
+                  <strong>Payment setup could not be started automatically.</strong>
+                  <p>
+                    Your appointment request is still confirmed. Please contact us
+                    if you'd like to arrange payment.
+                  </p>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.75rem' }}>
                 <button className="btn-outline" onClick={resetForm}>
                   Book another appointment
