@@ -603,3 +603,60 @@ existing `id`, `status`, `paidAt`:
 - [ ] Manual checkout flow end-to-end still works
 - [ ] Admin panel payment list, mark-paid, mark-refunded (Manual) still work
 - [ ] No Authorization header sent on public payment status request
+
+---
+
+## v6.5 — Production Readiness and Refund Strategy
+
+### Build
+
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+
+### Payment Status page — Pending (Iyzico)
+
+**Setup:** `ActiveProvider=Iyzico`, create booking → checkout → note `paymentId`
+
+- [ ] Navigate to `/payment-status/{paymentId}`
+- [ ] Badge shows "Awaiting payment" (amber)
+- [ ] Amount and currency are displayed
+- [ ] **"Continue payment" button** is visible and links to the Iyzico checkout URL
+- [ ] "Refresh status" button is present
+- [ ] After completing Iyzico sandbox payment and refreshing → status changes to Paid, button disappears
+
+### Payment Status page — Paid (Iyzico)
+
+- [ ] Badge shows "Payment completed" (green)
+- [ ] "Paid at" timestamp is shown
+- [ ] No "Continue payment" button
+- [ ] "Book another" and "Home" links present
+
+### Payment Status page — Failed (do not reuse old checkout URL)
+
+- [ ] Badge shows "Payment failed" (red)
+- [ ] Description: "The payment could not be completed. Please create a new booking…"
+- [ ] **No "Continue payment" button** — failed checkout URL is not offered for reuse
+- [ ] `failedAt` timestamp shown if set
+- [ ] "Book another" and "Home" links present
+
+### Payment Status page — Pending (Manual)
+
+**Setup:** `ActiveProvider=Manual`, create booking → checkout → note `paymentId`
+
+- [ ] Badge shows "Awaiting payment" (amber)
+- [ ] Description: "Our team will process it and reach out to you." (no Iyzico wording)
+- [ ] No "Continue payment" button (Manual `checkoutUrl` is the status page, not an external link)
+- [ ] "Refresh status" button is present
+
+### Developer tools panel (dev mode only — regression)
+
+- [ ] Panel visible in `npm run dev` for Pending Manual payment
+- [ ] Panel not visible in `npm run build` production output
+- [ ] Simulate button works for Manual Pending → page updates to Paid in-place
+- [ ] Simulate button for Iyzico Pending → shows backend error (Iyzico guard message)
+
+### No regressions
+
+- [ ] Booking form submits → `POST /api/appointments` → checkout auto-starts → payment info card shown
+- [ ] Manual payment status page loads for all states (Pending, Paid, Failed, Refunded)
+- [ ] `GET /api/payments/{id}/status` returns correct fields
+- [ ] No Authorization header sent on any public payment request
