@@ -475,3 +475,131 @@ The Developer Tools panel renders only when **both** conditions are true:
 - [ ] Failed status displays "Payment failed" badge
 - [ ] Refunded status displays "Payment refunded" badge
 - [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+
+---
+
+## v6.3 — PublicSite payment UX cleanup
+
+### Build
+
+- [ ] `npm run build` completes with zero TypeScript errors and zero Vite warnings
+- [ ] `dotnet build --configuration Release` (backend) completes with 0 errors
+
+### Backend: extended public payment status response
+
+`GET /api/payments/{id}/status` now returns additional fields alongside the
+existing `id`, `status`, `paidAt`:
+
+- [ ] Response includes `amount` (decimal), `currency` (string), `provider` (string)
+- [ ] Response includes `checkoutUrl` (string or null)
+- [ ] Response includes `failedAt` (datetime or null), `refundedAt` (datetime or null)
+- [ ] Response does **not** include `providerPaymentId`, `customerId`, `notes`, or any
+  internal provider token
+
+### Payment Status page — Pending (Iyzico)
+
+**Setup:** active provider = Iyzico, create booking → checkout → note `paymentId`
+
+- [ ] Navigate to `/payment-status/{paymentId}`
+- [ ] Badge shows "Awaiting payment" (amber)
+- [ ] `h2` title shows **"Payment is pending"**
+- [ ] Description mentions "processed securely by Iyzico"
+- [ ] Amount and currency are displayed (e.g. `150.00 TRY`)
+- [ ] **"Continue payment" button** is visible and links to the Iyzico `checkoutUrl`
+  (opens `target="_blank"`)
+- [ ] Note beneath the button: "You will be redirected to Iyzico's secure payment page."
+- [ ] **"Refresh status"** button is visible
+- [ ] After completing the Iyzico sandbox payment and refreshing → status changes to
+  **Paid**, "Continue payment" button disappears, `h2` shows "Payment completed"
+
+### Payment Status page — Pending (Manual)
+
+**Setup:** active provider = Manual, create booking → checkout → note `paymentId`
+
+- [ ] Navigate to `/payment-status/{paymentId}`
+- [ ] Badge shows "Awaiting payment" (amber)
+- [ ] `h2` title shows **"Payment is pending"**
+- [ ] Description says "Our team will process it and reach out to you." (no Iyzico wording)
+- [ ] Amount and currency are displayed
+- [ ] No "Continue payment" button (Manual provider's `checkoutUrl` = status page URL, not
+  an external checkout)
+- [ ] "Refresh status" button is visible
+
+### Payment Status page — Paid
+
+- [ ] Badge shows "Payment completed" (green)
+- [ ] `h2` title shows **"Payment completed"**
+- [ ] Amount and currency shown
+- [ ] `paidAt` timestamp shown in "Paid at" meta row
+- [ ] No "Continue payment" button
+- [ ] "Book another" and "Home" links present
+
+### Payment Status page — Failed
+
+- [ ] Badge shows "Payment failed" (red)
+- [ ] `h2` title shows **"Payment failed"**
+- [ ] Description: "The payment could not be completed. Please create a new booking…"
+- [ ] No "Continue payment" button (failed checkout URL is not reused)
+- [ ] `failedAt` timestamp shown if set
+- [ ] "Book another" and "Home" links present
+
+### Payment Status page — Refunded
+
+- [ ] Badge shows "Payment refunded" (purple)
+- [ ] `h2` title shows **"Payment refunded"**
+- [ ] Description explains allow a few business days
+- [ ] `refundedAt` timestamp shown if set
+- [ ] No "Continue payment" button
+
+### Payment Status page — load error / offline backend
+
+- [ ] Navigate to `/payment-status/99999` (non-existent id) → error state shows
+- [ ] Error message is displayed in red
+- [ ] "Try again", "Back to booking", "Home" links are all present
+- [ ] No crash, no blank screen
+
+### Booking page — payment card (Iyzico)
+
+**Setup:** active provider = Iyzico, submit a valid booking
+
+- [ ] Checkout loading spinner shows while `POST /api/payments/checkout` is in flight
+- [ ] On success: payment card shows amount + currency + "Pending" badge
+- [ ] Card shows note: "Payment is processed securely by Iyzico."
+- [ ] **"Continue payment →" button** is visible, opens `checkoutUrl` in new tab
+- [ ] **"View payment status →"** link is visible below the button
+- [ ] Clicking "Continue payment →" opens the Iyzico sandbox checkout page
+
+### Booking page — payment card (Manual)
+
+**Setup:** active provider = Manual, submit a valid booking
+
+- [ ] Payment card shows amount + currency + "Pending" badge
+- [ ] No "Payment is processed securely by Iyzico." text
+- [ ] No "Continue payment →" button (Manual `checkoutUrl` is the status page, not shown
+  as an external link)
+- [ ] "View payment status →" link is present
+
+### Booking page — payment setup failure
+
+- [ ] If backend checkout fails (e.g. Iyzico credentials missing), amber warning box shows:
+  "Payment setup could not be started automatically."
+- [ ] Warning clarifies the booking itself is still confirmed
+- [ ] No crash; "Book another appointment" and "Go to home" buttons still work
+
+### Developer tools panel (dev mode only)
+
+- [ ] Panel visible for Pending payment in `npm run dev`
+- [ ] Description now clarifies: "Works for **Manual provider** only —
+  Iyzico payments must be verified through the real callback flow."
+- [ ] Simulate button works for a Manual Pending payment → page updates to Paid in-place
+- [ ] Simulate button for an Iyzico Pending payment → shows error from backend
+  (`"Iyzico payments can only be marked Paid after provider callback verification."`)
+- [ ] Panel does not appear in `npm run build` production output
+
+### Regression checks
+
+- [ ] `GET /api/payments/{id}/status` still returns 200 with `id`, `status`, `paidAt`
+  (existing fields unchanged — new fields are additive)
+- [ ] Manual checkout flow end-to-end still works
+- [ ] Admin panel payment list, mark-paid, mark-refunded (Manual) still work
+- [ ] No Authorization header sent on public payment status request

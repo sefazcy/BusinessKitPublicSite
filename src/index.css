@@ -1314,6 +1314,44 @@ a {
   cursor: not-allowed;
 }
 
+.ps-status-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.ps-continue-block {
+  margin-bottom: 1.25rem;
+}
+
+.ps-continue-btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.ps-continue-note {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.checkout-provider-note {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: -0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.checkout-continue-btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  margin-bottom: 0.75rem;
+}
+
 @media (max-width: 768px) {
   .ps-card {
     padding: 1.75rem 1.25rem;
@@ -1326,6 +1364,11 @@ a {
   .ps-actions .btn-primary,
   .ps-actions .btn-outline {
     width: 100%;
+    text-align: center;
+  }
+
+  .ps-continue-block .btn-primary {
+    display: block;
     text-align: center;
   }
 

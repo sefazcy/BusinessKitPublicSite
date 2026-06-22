@@ -12,5 +12,11 @@ export interface PaymentCheckoutResponse {
 export interface PublicPaymentStatus {
   id: number;
   status: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  checkoutUrl: string | null;
   paidAt: string | null;
+  failedAt: string | null;
+  refundedAt: string | null;
 }

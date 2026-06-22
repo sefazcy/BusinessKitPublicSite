@@ -4,15 +4,7 @@ import type { PublicPaymentStatus } from '../types/payment';
 import { getPaymentStatus, simulatePaid } from '../api/paymentApi';
 import { extractError } from '../utils/extractError';
 
-function statusLabel(s: string): string {
-  switch (s) {
-    case 'Pending':  return 'Awaiting payment';
-    case 'Paid':     return 'Payment completed';
-    case 'Failed':   return 'Payment failed';
-    case 'Refunded': return 'Payment refunded';
-    default:         return s;
-  }
-}
+const KNOWN_STATUSES = ['Pending', 'Paid', 'Failed', 'Refunded'];
 
 function statusBadgeClass(s: string): string {
   switch (s) {
@@ -21,6 +13,16 @@ function statusBadgeClass(s: string): string {
     case 'Failed':   return 'ps-badge ps-badge-failed';
     case 'Refunded': return 'ps-badge ps-badge-refunded';
     default:         return 'ps-badge';
+  }
+}
+
+function statusBadgeLabel(s: string): string {
+  switch (s) {
+    case 'Pending':  return 'Awaiting payment';
+    case 'Paid':     return 'Payment completed';
+    case 'Failed':   return 'Payment failed';
+    case 'Refunded': return 'Payment refunded';
+    default:         return s;
   }
 }
 
@@ -82,6 +84,10 @@ export default function PaymentStatusPage() {
     }
   };
 
+  const isIyzico = status?.provider === 'Iyzico';
+  const isUnknownStatus = status !== null && !KNOWN_STATUSES.includes(status.status);
+  const showRefresh = status?.status === 'Pending' || isUnknownStatus;
+
   return (
     <div className="page-content">
       <div className="page-hero">
@@ -119,49 +125,115 @@ export default function PaymentStatusPage() {
             <div className="ps-card">
               <div className="ps-card-header">
                 <span className={statusBadgeClass(status.status)}>
-                  {statusLabel(status.status)}
+                  {statusBadgeLabel(status.status)}
                 </span>
                 <p className="ps-payment-id">Payment #{status.id}</p>
               </div>
 
+              {/* Amount */}
+              {status.amount > 0 && status.currency && (
+                <div className="ps-meta">
+                  <span className="ps-meta-label">Amount</span>
+                  <span className="ps-meta-value">
+                    {Number(status.amount).toFixed(2)} {status.currency}
+                  </span>
+                </div>
+              )}
+
+              {/* Timestamps */}
               {status.status === 'Paid' && status.paidAt && (
                 <div className="ps-meta">
                   <span className="ps-meta-label">Paid at</span>
                   <span className="ps-meta-value">{formatDate(status.paidAt)}</span>
                 </div>
               )}
+              {status.status === 'Failed' && status.failedAt && (
+                <div className="ps-meta">
+                  <span className="ps-meta-label">Failed at</span>
+                  <span className="ps-meta-value">{formatDate(status.failedAt)}</span>
+                </div>
+              )}
+              {status.status === 'Refunded' && status.refundedAt && (
+                <div className="ps-meta">
+                  <span className="ps-meta-label">Refunded at</span>
+                  <span className="ps-meta-value">{formatDate(status.refundedAt)}</span>
+                </div>
+              )}
 
+              {/* Pending */}
               {status.status === 'Pending' && (
-                <p className="ps-description">
-                  Your payment is pending. Click "Refresh status" to check for updates, or
-                  our team will process it and reach out to you.
-                </p>
+                <>
+                  <h2 className="ps-status-title">Payment is pending</h2>
+                  <p className="ps-description">
+                    Your booking request was received. Payment is still waiting.
+                    {isIyzico
+                      ? ' Your payment is processed securely by Iyzico.'
+                      : ' Our team will process it and reach out to you.'}
+                  </p>
+                  {status.checkoutUrl && (
+                    <div className="ps-continue-block">
+                      <a
+                        href={status.checkoutUrl}
+                        className="btn-primary ps-continue-btn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Continue payment
+                      </a>
+                      {isIyzico && (
+                        <p className="ps-continue-note">
+                          You will be redirected to Iyzico's secure payment page.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
+              {/* Paid */}
               {status.status === 'Paid' && (
-                <p className="ps-description">
-                  Your payment has been received. Thank you!
-                </p>
+                <>
+                  <h2 className="ps-status-title">Payment completed</h2>
+                  <p className="ps-description">
+                    Your payment has been received. Thank you!
+                  </p>
+                </>
               )}
 
+              {/* Failed */}
               {status.status === 'Failed' && (
-                <p className="ps-description">
-                  This payment could not be completed. Please contact us if you believe
-                  this is an error or to arrange an alternative.
-                </p>
+                <>
+                  <h2 className="ps-status-title">Payment failed</h2>
+                  <p className="ps-description">
+                    The payment could not be completed. Please create a new booking
+                    or contact the business to arrange an alternative.
+                  </p>
+                </>
               )}
 
+              {/* Refunded */}
               {status.status === 'Refunded' && (
+                <>
+                  <h2 className="ps-status-title">Payment refunded</h2>
+                  <p className="ps-description">
+                    This payment has been refunded. Please allow a few business days
+                    for the amount to return to your account.
+                  </p>
+                </>
+              )}
+
+              {/* Unknown status fallback */}
+              {isUnknownStatus && (
                 <p className="ps-description">
-                  This payment has been refunded. Please allow a few business days for
-                  the amount to return to your account.
+                  We could not determine the payment status. Please refresh or
+                  contact support.
                 </p>
               )}
 
               <div className="ps-actions">
-                {status.status === 'Pending' && (
+                {showRefresh && (
                   <button
-                    className="btn-primary"
+                    className="btn-outline"
                     onClick={refresh}
                     disabled={refreshing}
                   >
@@ -178,7 +250,8 @@ export default function PaymentStatusPage() {
                   <p className="ps-dev-description">
                     This section is visible for development testing only. It calls the
                     backend <code>PATCH /api/payments/{status.id}/simulate-paid</code> endpoint
-                    to mark this payment as Paid without a real payment provider.
+                    to mark this payment as Paid. Works for <strong>Manual provider</strong> only —
+                    Iyzico payments must be verified through the real callback flow.
                   </p>
                   {simError && (
                     <div className="form-error" style={{ marginBottom: '0.875rem' }}>

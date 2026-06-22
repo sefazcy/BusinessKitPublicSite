@@ -168,6 +168,21 @@ export default function BookingPage() {
                       {checkout.status}
                     </span>
                   </div>
+                  {checkout.provider === 'Iyzico' && (
+                    <p className="checkout-provider-note">
+                      Payment is processed securely by Iyzico.
+                    </p>
+                  )}
+                  {checkout.checkoutUrl && (
+                    <a
+                      href={checkout.checkoutUrl}
+                      className="btn-primary checkout-continue-btn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Continue payment →
+                    </a>
+                  )}
                   <Link
                     to={`/payment-status/${checkout.paymentId}`}
                     className="checkout-info-link"
