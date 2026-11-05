@@ -21,7 +21,7 @@ export default function App() {
           <Route path="blog" element={<BlogPage />} />
           <Route path="blog/:slug" element={<BlogPage />} />
           <Route path="contact" element={<ContactPage />} />
-          <Route path="payment-status/:paymentId" element={<PaymentStatusPage />} />
+          <Route path="payment-status/:paymentToken" element={<PaymentStatusPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

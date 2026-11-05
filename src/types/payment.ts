@@ -1,4 +1,6 @@
 export interface PaymentCheckoutResponse {
+  /** Use for the status page and API. paymentId is for display only. */
+  paymentToken: string;
   paymentId: number;
   appointmentId: number;
   amount: number;

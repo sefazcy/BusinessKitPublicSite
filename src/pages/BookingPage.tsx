@@ -69,7 +69,7 @@ export default function BookingPage() {
     setValidationError('');
     setSubmitting(true);
 
-    let bookedId: number | null = null;
+    let bookedToken: string | null = null;
     try {
       const { data } = await createBooking({
         customerFullName: form.customerFullName.trim(),
@@ -83,19 +83,19 @@ export default function BookingPage() {
       });
       setConfirmation(data);
       setForm(EMPTY_FORM);
-      bookedId = data.id;
+      bookedToken = data.publicToken;
     } catch (err) {
       setSubmitError(extractError(err));
     } finally {
       setSubmitting(false);
     }
 
-    if (bookedId === null) return;
+    if (bookedToken === null) return;
 
     // Booking succeeded — start checkout session automatically
     setCheckoutLoading(true);
     try {
-      const { data: checkoutData } = await createCheckout(bookedId);
+      const { data: checkoutData } = await createCheckout(bookedToken);
       setCheckout(checkoutData);
     } catch (err) {
       setCheckoutError(extractError(err));
@@ -184,7 +184,7 @@ export default function BookingPage() {
                     </a>
                   )}
                   <Link
-                    to={`/payment-status/${checkout.paymentId}`}
+                    to={`/payment-status/${checkout.paymentToken}`}
                     className="checkout-info-link"
                   >
                     View payment status →

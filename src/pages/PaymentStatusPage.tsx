@@ -34,8 +34,9 @@ function formatDate(iso: string): string {
 }
 
 export default function PaymentStatusPage() {
-  const { paymentId } = useParams<{ paymentId: string }>();
-  const id = paymentId ? parseInt(paymentId, 10) : NaN;
+  const { paymentToken } = useParams<{ paymentToken: string }>();
+  // Public payment tokens are 32 lowercase hex characters (see backend PublicTokens).
+  const token = paymentToken && /^[0-9a-f]{32}$/.test(paymentToken) ? paymentToken : null;
 
   const [status, setStatus] = useState<PublicPaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,22 +46,23 @@ export default function PaymentStatusPage() {
   const [simError, setSimError] = useState('');
 
   useEffect(() => {
-    if (isNaN(id)) {
-      setError('Invalid payment ID.');
+    if (token === null) {
+      setError('This payment link is invalid. Please check the link or contact us.');
       setLoading(false);
       return;
     }
-    getPaymentStatus(id)
+    getPaymentStatus(token)
       .then(({ data }) => setStatus(data))
       .catch(err => setError(extractError(err)))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [token]);
 
   const refresh = async () => {
+    if (token === null) return;
     setRefreshing(true);
     setSimError('');
     try {
-      const { data } = await getPaymentStatus(id);
+      const { data } = await getPaymentStatus(token);
       setStatus(data);
       setError('');
     } catch (err) {
@@ -71,11 +73,12 @@ export default function PaymentStatusPage() {
   };
 
   const handleSimulate = async () => {
+    if (token === null) return;
     setSimulating(true);
     setSimError('');
     try {
-      await simulatePaid(id);
-      const { data } = await getPaymentStatus(id);
+      await simulatePaid(token);
+      const { data } = await getPaymentStatus(token);
       setStatus(data);
     } catch (err) {
       setSimError(extractError(err));
@@ -110,7 +113,7 @@ export default function PaymentStatusPage() {
             <div className="ps-error-box">
               <p className="ps-error-message">{error}</p>
               <div className="ps-actions">
-                {!isNaN(id) && (
+                {token !== null && (
                   <button className="btn-outline" onClick={refresh}>
                     Try again
                   </button>
@@ -249,7 +252,7 @@ export default function PaymentStatusPage() {
                   <p className="ps-dev-label">Developer tools</p>
                   <p className="ps-dev-description">
                     This section is visible for development testing only. It calls the
-                    backend <code>PATCH /api/payments/{status.id}/simulate-paid</code> endpoint
+                    backend <code>PATCH /api/payments/{'{paymentToken}'}/simulate-paid</code> endpoint
                     to mark this payment as Paid. Works for <strong>Manual provider</strong> only —
                     Iyzico payments must be verified through the real callback flow.
                   </p>

@@ -11,6 +11,8 @@ export interface CreateBookingRequest {
 
 export interface BookingConfirmation {
   id: number;
+  /** Unguessable token used to start payment for this appointment. */
+  publicToken: string;
   customerFullName: string;
   businessServiceTitle: string | null;
   requestedDate: string;
